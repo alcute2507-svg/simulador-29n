@@ -336,8 +336,9 @@
         let chartTrackInst = null;
 
         // INICIALIZACIÓN Y CARGA JSON
-        window.onload = () => {
-            fetch('datos_encuestas.json')
+       window.onload = () => {
+            // El ?v=... engaña al navegador haciéndole creer que es un archivo nuevo cada milisegundo
+            fetch('datos_encuestas.json?v=' + new Date().getTime())
                 .then(res => res.json())
                 .then(data => {
                     encuestas = data;
