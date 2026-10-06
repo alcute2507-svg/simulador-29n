@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="es" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ElectorLab Pro - Analítica Electoral</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root { --bg-darker: #0b0f19; --bg-panel: #151c2c; --border-color: #2a3449; --text-muted: #8b9bb4; }
+        body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background-color: var(--bg-darker); color: #e2e8f0; overflow: hidden; }
+        #app-container { display: flex; height: 100vh; }
+        #sidebar { width: 260px; background-color: var(--bg-panel); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; z-index: 1000; }
+        #main-content { flex-grow: 1; overflow-y: auto; background-color: var(--bg-darker); padding: 2rem; }
+        .nav-link { color: var(--text-muted); border-radius: 0.5rem; margin: 0.2rem 1rem; padding: 0.8rem 1rem; transition: all 0.2s; font-weight: 500; }
+        .nav-link:hover { background-color: rgba(255,255,255,0.05); color: #fff; }
+        .nav-link.active { background-color: #0d6efd; color: #fff; box-shadow: 0 4px 12px rgba(13, 110, 253, 0.3); }
+        .panel-card { background-color: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 0.75rem; box-shadow: 0 4px 6px rgba(0,0,0,0.2); margin-bottom: 1.5rem; }
+        .panel-header { padding: 1rem 1.5rem; border-bottom: 1px solid var(--border-color); font-weight: 700; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 0.5px; color: var(--text-muted); }
+        .view-section { display: none; animation: fadeIn 0.3s ease; }
+        .view-section.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .table-dark { --bs-table-bg: transparent; }
+        .table-dhondt { font-size: 0.85rem; }
+        .table-dhondt th { position: sticky; top: 0; background-color: #1e2638; z-index: 10; font-size: 0.8rem; }
+        .table-dhondt td.winner { background-color: rgba(25, 135, 84, 0.15) !important; color: #4ade80; font-weight: 800; border: 1px solid #198754; }
+        .matrix-wrapper { max-height: 500px; overflow: auto; border-radius: 0.5rem; border: 1px solid var(--border-color); }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-darker); }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+        .form-control, .form-select { background-color: #0f172a; border-color: #334155; color: #f8fafc; }
+        .form-control:focus, .form-select:focus { background-color: #1e293b; border-color: #3b82f6; color: #fff; box-shadow: 0 0 0 0.25rem rgba(59, 130, 246, 0.25); }
+    </style>
+</head>
+<body>
+
+    <div id="app-container">
+        
+        <!-- Sidebar -->
+        <nav id="sidebar">
+            <div class="p-4 border-bottom border-secondary mb-3 d-flex align-items-center gap-3">
+                <div class="bg-primary text-white p-2 rounded"><i class="fa-solid fa-chart-pie"></i></div>
+                <h5 class="mb-0 fw-bold">Elector<span class="text-primary">Lab</span> Pro</h5>
+            </div>
+            
+            <a href="#" class="nav-link active" onclick="switchView('dashboard')"><i class="fa-solid fa-gauge-high fa-fw me-2"></i> Dashboard Nacional</a>
+            <a href="#" class="nav-link" onclick="switchView('tracking')"><i class="fa-solid fa-database fa-fw me-2"></i> Tracking Encuestas</a>
+            <a href="#" class="nav-link" onclick="switchView('laboratorio')"><i class="fa-solid fa-microscope fa-fw me-2"></i> Laboratorio D'Hondt</a>
+
+            <!-- Noticias -->
+            <div class="mx-3 mt-4 mb-2">
+                <div class="bg-warning bg-opacity-10 border border-warning rounded p-3 text-warning shadow-sm">
+                    <h6 class="fw-bold mb-2 pb-2 border-bottom border-warning border-opacity-50 text-uppercase" style="font-size: 0.75rem;"><i class="fa-solid fa-bolt me-1"></i> Rumbo al 29N</h6>
+                    <p class="text-white-50 lh-sm mb-3" style="font-size: 0.7rem;">Adelanto electoral tras el fracaso de los decretos de vivienda.</p>
+                    <div class="d-flex flex-column gap-2 mb-3">
+                        <div class="bg-dark border border-secondary rounded p-1 px-2 d-flex justify-content-between align-items-center"><span class="text-muted" style="font-size: 0.65rem; text-transform: uppercase;">Campaña</span><span class="fw-bold text-info" style="font-size: 0.75rem;">14-27 Nov</span></div>
+                        <div class="bg-dark border border-secondary rounded p-1 px-2 d-flex justify-content-between align-items-center"><span class="text-muted" style="font-size: 0.65rem; text-transform: uppercase;">Reflexión</span><span class="fw-bold text-warning" style="font-size: 0.75rem;">28 Nov</span></div>
+                        <div class="bg-dark border border-secondary rounded p-1 px-2 d-flex justify-content-between align-items-center"><span class="text-muted" style="font-size: 0.65rem; text-transform: uppercase;">Votación</span><span class="fw-bold text-danger" style="font-size: 0.75rem;">29 Nov</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-auto p-4 text-center text-muted" style="font-size: 0.75rem;"><i class="fa-solid fa-shield-halved mb-1"></i><br>Core Analítico v5.0 (Python Link)</div>
+        </nav>
+
+        <!-- Main Content -->
+        <main id="main-content">
+            
+            <!-- DASHBOARD -->
+            <section id="dashboard" class="view-section active">
+                <div class="d-flex justify-content-between align-items-end mb-4">
+                    <div>
+                        <h2 class="fw-bold mb-1">Dashboard de Pactos e Investidura</h2>
+                        <p class="text-muted mb-0">Simulador de mayorías proyectado automáticamente desde la última encuesta.</p>
+                    </div>
+                    <div class="bg-danger text-white px-3 py-2 rounded fw-bold shadow-sm">Absoluta: 176</div>
+                </div>
+
+                <div class="row g-4 mb-4">
+                    <!-- Resumen Bloques -->
+                    <div class="col-xl-8">
+                        <div class="panel-card h-100">
+                            <div class="panel-header"><i class="fa-solid fa-scale-balanced me-2"></i> Suma de Bloques Base</div>
+                            <div class="card-body p-4">
+                                <div class="row text-center align-items-center h-100">
+                                    <div class="col-6 border-end" style="border-color: var(--border-color) !important;">
+                                        <h6 class="text-danger fw-bold mb-3">BLOQUE IZQUIERDA<br><span class="small text-muted fw-normal">(PSOE+SUMAR+POD+MM+AA)</span></h6>
+                                        <h1 class="display-3 fw-black mb-2" id="dash-escanos-izq">0</h1>
+                                        <div id="badge-izq" class="badge bg-secondary p-2 fs-6">No alcanza</div>
+                                    </div>
+                                    <div class="col-6">
+                                        <h6 class="text-primary fw-bold mb-3">BLOQUE DERECHA<br><span class="small text-muted fw-normal">(PP+VOX+UPN)</span></h6>
+                                        <h1 class="display-3 fw-black mb-2" id="dash-escanos-der">0</h1>
+                                        <div id="badge-der" class="badge bg-secondary p-2 fs-6">No alcanza</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Simulador Nacionalistas -->
+                    <div class="col-xl-4">
+                        <div class="panel-card h-100 border-info">
+                            <div class="panel-header bg-info bg-opacity-10 text-info border-info border-bottom"><i class="fa-solid fa-code-branch me-2"></i> Apoyos Nacionalistas</div>
+                            <div class="card-body p-4">
+                                <div class="mb-4">
+                                    <label class="form-label small fw-bold text-warning mb-1">Nac. Izquierda <span class="text-muted">(ERC+BILDU+BNG+CHA)</span></label>
+                                    <div class="text-end small text-muted mb-1" id="val-nac-izq">0 escaños</div>
+                                    <select class="form-select form-select-sm" id="sel-nac-izq" onchange="calcMayorias()">
+                                        <option value="izq" selected>Apoyan a Izquierda</option>
+                                        <option value="der">Apoyan a Derecha</option>
+                                        <option value="ninguno">Abstención</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="form-label small fw-bold text-info mb-1">Nac. Der/Cen <span class="text-muted">(JUNTS+PNV+CC)</span></label>
+                                    <div class="text-end small text-muted mb-1" id="val-nac-der">0 escaños</div>
+                                    <select class="form-select form-select-sm" id="sel-nac-der" onchange="calcMayorias()">
+                                        <option value="izq">Apoyan a Izquierda</option>
+                                        <option value="der">Apoyan a Derecha</option>
+                                        <option value="ninguno" selected>Abstención</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-4 mb-4">
+                    <!-- Hemiciclo -->
+                    <div class="col-lg-4">
+                        <div class="panel-card h-100">
+                            <div class="panel-header text-center">Hemiciclo Proyectado</div>
+                            <div class="card-body d-flex align-items-center justify-content-center position-relative p-4" style="min-height: 250px;">
+                                <div class="w-100" style="max-width: 320px;">
+                                    <canvas id="chartHemi"></canvas>
+                                </div>
+                                <div class="position-absolute text-center" style="bottom: 20px;">
+                                    <span class="fs-2 fw-bold">350</span><br>
+                                    <span class="small text-muted text-uppercase">Diputados</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Gráfico Tendencia -->
+                    <div class="col-lg-8">
+                        <div class="panel-card h-100">
+                            <div class="panel-header d-flex justify-content-between">
+                                <span>Tendencia Demoscópica</span>
+                                <span class="small text-muted fw-normal">Leído desde datos_encuestas.json</span>
+                            </div>
+                            <div class="card-body p-3">
+                                <div style="height: 250px; width: 100%;">
+                                    <canvas id="chartTrackingMain"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TRACKING -->
+            <section id="tracking" class="view-section">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2 class="fw-bold mb-0">Base de Datos de Encuestas</h2>
+                    <span class="text-info"><i class="fa-solid fa-robot me-2"></i>Actualización Python Automática</span>
+                </div>
+
+                <div class="panel-card">
+                    <div class="card-body p-0">
+                        <div class="table-responsive" style="max-height: 70vh; overflow-y: auto;">
+                            <table class="table table-dark table-hover mb-0 align-middle text-center" style="font-size: 0.85rem;">
+                                <thead class="table-active" style="position: sticky; top: 0; z-index: 1;">
+                                    <tr>
+                                        <th class="text-start ps-4">Fecha ↓</th>
+                                        <th class="text-start">Encuestadora</th>
+                                        <th style="color:#1d84ce">PP</th><th style="color:#ef1c27">PSOE</th><th style="color:#63be21">VOX</th>
+                                        <th style="color:#e51c55">SUMAR</th><th style="color:#6b21a8">POD</th><th style="color:#0f7b7b">MM</th>
+                                        <th style="color:#009a56">AA</th><th style="color:#ffb232">ERC</th><th style="color:#40e0d0">JUNTS</th>
+                                        <th style="color:#99cc00">BILDU</th><th style="color:#008000">PNV</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbody-tracking"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- LABORATORIO -->
+            <section id="laboratorio" class="view-section">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div>
+                        <h2 class="fw-bold mb-1">Laboratorio Provincial D'Hondt</h2>
+                        <p class="text-muted mb-0">Motor de simulación matemática para el reparto exacto de escaños.</p>
+                    </div>
+                    <div class="d-flex align-items-center gap-3">
+                        <label class="text-muted fw-bold text-nowrap">Seleccionar Provincia:</label>
+                        <select class="form-select border-primary bg-primary bg-opacity-10 shadow-sm" id="sel-lab-provincia" onchange="cargarProvLab()"></select>
+                    </div>
+                </div>
+
+                <div class="row g-4 mb-4">
+                    <div class="col-lg-4">
+                        <div class="panel-card h-100 mb-0">
+                            <div class="panel-header bg-secondary bg-opacity-25 text-white"><i class="fa-solid fa-history me-2"></i> Base Válidos (Ref. aprox 2023)</div>
+                            <div class="card-body p-0">
+                                <table class="table table-dark table-sm table-striped text-center mb-0" style="font-size: 0.85rem;">
+                                    <thead><tr><th class="text-start ps-3">Partido</th><th>Votos</th><th>%</th><th>Esc.</th></tr></thead>
+                                    <tbody id="tbody-lab-base"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-8">
+                        <div class="panel-card h-100 mb-0 border-primary">
+                            <div class="panel-header bg-primary bg-opacity-10 text-primary border-primary border-bottom">
+                                <i class="fa-solid fa-flask me-2"></i> Tu Simulación (%)
+                            </div>
+                            <div class="card-body">
+                                <p class="small text-muted mb-3">Modifica los % manuales por provincia y genera la matriz de reparto.</p>
+                                <div class="row g-2" id="grid-inputs-partidos"></div>
+                                <hr class="border-secondary my-4">
+                                <div class="text-end">
+                                    <button class="btn btn-primary px-4 fw-bold shadow" onclick="ejecutarDHondt()">
+                                        <i class="fa-solid fa-calculator me-2"></i>Generar Matriz D'Hondt
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="panel-matriz" class="panel-card mb-5 border-success" style="display: none;">
+                    <div class="panel-header bg-success bg-opacity-10 text-success border-success border-bottom d-flex justify-content-between align-items-center">
+                        <span><i class="fa-solid fa-check-double me-2"></i> Resultados de la Simulación</span>
+                        <span class="badge bg-success" id="badge-reparto-total"></span>
+                    </div>
+                    <div class="card-body">
+                        <div id="resultado-final-escanos" class="d-flex flex-wrap gap-4 mb-4 fs-4 fw-bold justify-content-center p-3 bg-dark rounded border border-secondary"></div>
+                        <h6 class="text-muted fw-bold mb-2 small text-uppercase">Matriz de Divisiones D'Hondt</h6>
+                        <div class="matrix-wrapper custom-scrollbar">
+                            <table class="table table-dark table-bordered table-dhondt text-center font-monospace mb-0 w-100" id="tabla-dhondt-matriz"></table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        const PARTIDOS = [
+            { id: 'PP', color: '#1d84ce', bloque: 'der' }, { id: 'PSOE', color: '#ef1c27', bloque: 'izq' }, { id: 'VOX', color: '#63be21', bloque: 'der' },
+            { id: 'SUMAR', color: '#e51c55', bloque: 'izq' }, { id: 'PODEMOS', color: '#6b21a8', bloque: 'izq' }, { id: 'MAS MADRID', color: '#0f7b7b', bloque: 'izq' },
+            { id: 'ADELANTE', color: '#009a56', bloque: 'izq' }, { id: 'ERC', color: '#ffb232', bloque: 'nac_izq' }, { id: 'JUNTS', color: '#40e0d0', bloque: 'nac_der' },
+            { id: 'EH BILDU', color: '#99cc00', bloque: 'nac_izq' }, { id: 'PNV', color: '#008000', bloque: 'nac_der' }, { id: 'BNG', color: '#87cefa', bloque: 'nac_izq' },
+            { id: 'CC', color: '#ffd700', bloque: 'nac_der' }, { id: 'UPN', color: '#00008b', bloque: 'der' }, { id: 'CHA', color: '#d32a1b', bloque: 'nac_izq' }, { id: 'OTROS', color: '#808080', bloque: 'otros' }
+        ];
+
+        const cMap = {}; PARTIDOS.forEach(p => cMap[p.id] = p.color);
+        let CONGRESO_ACTUAL = {}; // Se calculará dinámicamente
+
+        // Factores de concentración para calcular el Congreso desde los % Nacionales
+        const regionesMulti = {
+            "ERC": { provs: ["Barcelona", "Tarragona", "Lleida", "Girona"], multi: 6.2 },
+            "JUNTS": { provs: ["Barcelona", "Tarragona", "Lleida", "Girona"], multi: 5.5 },
+            "EH BILDU": { provs: ["Bizkaia", "Gipuzkoa", "Álava", "Navarra"], multi: 16.0 },
+            "PNV": { provs: ["Bizkaia", "Gipuzkoa", "Álava"], multi: 18.0 },
+            "BNG": { provs: ["A Coruña", "Pontevedra", "Lugo", "Ourense"], multi: 14.0 },
+            "CC": { provs: ["Las Palmas", "Santa Cruz de Tenerife"], multi: 18.0 },
+            "UPN": { provs: ["Navarra"], multi: 50.0 },
+            "CHA": { provs: ["Zaragoza", "Huesca", "Teruel"], multi: 15.0 },
+            "ADELANTE": { provs: ["Sevilla", "Cádiz", "Málaga", "Córdoba", "Huelva", "Jaén", "Almería", "Granada"], multi: 5.0 },
+            "MAS MADRID": { provs: ["Madrid"], multi: 6.5 }
+        };
+
+        const NOMBRES_PROVINCIAS = [
+            {id:'madrid', n:'Madrid', s:37}, {id:'barcelona', n:'Barcelona', s:32}, {id:'valencia', n:'Valencia', s:16}, {id:'alicante', n:'Alicante', s:12}, {id:'sevilla', n:'Sevilla', s:12}, {id:'malaga', n:'Málaga', s:11}, {id:'murcia', n:'Murcia', s:10}, {id:'cadiz', n:'Cádiz', s:9}, {id:'baleares', n:'Baleares', s:8}, {id:'acoruna', n:'A Coruña', s:8}, {id:'laspalmas', n:'Las Palmas', s:8}, {id:'bizkaia', n:'Bizkaia', s:8}, {id:'asturias', n:'Asturias', s:7}, {id:'tenerife', n:'Santa Cruz de Tenerife', s:7}, {id:'zaragoza', n:'Zaragoza', s:7}, {id:'pontevedra', n:'Pontevedra', s:7}, {id:'granada', n:'Granada', s:7}, {id:'tarragona', n:'Tarragona', s:6}, {id:'cordoba', n:'Córdoba', s:6}, {id:'girona', n:'Girona', s:6}, {id:'gipuzkoa', n:'Gipuzkoa', s:6}, {id:'toledo', n:'Toledo', s:6}, {id:'almeria', n:'Almería', s:6}, {id:'badajoz', n:'Badajoz', s:5}, {id:'jaen', n:'Jaén', s:5}, {id:'cantabria', n:'Cantabria', s:5}, {id:'castellon', n:'Castellón', s:5}, {id:'huelva', n:'Huelva', s:5}, {id:'valladolid', n:'Valladolid', s:5}, {id:'ciudadreal', n:'Ciudad Real', s:5}, {id:'navarra', n:'Navarra', s:5}, {id:'leon', n:'León', s:4}, {id:'lleida', n:'Lleida', s:4}, {id:'caceres', n:'Cáceres', s:4}, {id:'albacete', n:'Albacete', s:4}, {id:'burgos', n:'Burgos', s:4}, {id:'salamanca', n:'Salamanca', s:4}, {id:'lugo', n:'Lugo', s:4}, {id:'ourense', n:'Ourense', s:4}, {id:'larioja', n:'La Rioja', s:4}, {id:'alava', n:'Álava', s:4}, {id:'guadalajara', n:'Guadalajara', s:3}, {id:'huesca', n:'Huesca', s:3}, {id:'cuenca', n:'Cuenca', s:3}, {id:'zamora', n:'Zamora', s:3}, {id:'avila', n:'Ávila', s:3}, {id:'palencia', n:'Palencia', s:3}, {id:'segovia', n:'Segovia', s:3}, {id:'teruel', n:'Teruel', s:3}, {id:'soria', n:'Soria', s:2}, {id:'ceuta', n:'Ceuta', s:1}, {id:'melilla', n:'Melilla', s:1}
+        ];
+
+        const PROVINCIAS_DATA = {};
+        NOMBRES_PROVINCIAS.forEach(prov => {
+            const validos = prov.s * 85000;
+            PROVINCIAS_DATA[prov.id] = { nombre: prov.n, escanos: prov.s, validos: validos, base: {} };
+            PARTIDOS.forEach(p => PROVINCIAS_DATA[prov.id].base[p.id] = 0);
+            
+            // Setup visual dummy base data
+            PROVINCIAS_DATA[prov.id].base['PP'] = Math.floor(validos * 0.35);
+            PROVINCIAS_DATA[prov.id].base['PSOE'] = Math.floor(validos * 0.30);
+            PROVINCIAS_DATA[prov.id].base['VOX'] = Math.floor(validos * 0.15);
+            PROVINCIAS_DATA[prov.id].base['SUMAR'] = Math.floor(validos * 0.12);
+            if(['Barcelona', 'Girona', 'Lleida', 'Tarragona'].includes(prov.n)) {
+                PROVINCIAS_DATA[prov.id].base['ERC'] = Math.floor(validos * 0.18);
+                PROVINCIAS_DATA[prov.id].base['JUNTS'] = Math.floor(validos * 0.16);
+                PROVINCIAS_DATA[prov.id].base['PP'] = Math.floor(validos * 0.10);
+            }
+        });
+
+        let encuestas = [];
+        let chartHemiInst = null;
+        let chartTrackInst = null;
+
+        // INICIALIZACIÓN Y CARGA JSON
+        window.onload = () => {
+            fetch('datos_encuestas.json')
+                .then(res => res.json())
+                .then(data => {
+                    encuestas = data;
+                    if(encuestas.length > 0) {
+                        encuestas.sort((a,b) => new Date(a.f) - new Date(b.f));
+                        // Asegurar que todos los partidos existan en el objeto 'd'
+                        encuestas.forEach(enc => { PARTIDOS.forEach(p => { if(enc.d[p.id] === undefined) enc.d[p.id] = 0; }); });
+                        
+                        // Proyectar D'Hondt Nacional sobre la última encuesta
+                        proyectarCongreso(encuestas[encuestas.length - 1]);
+                        
+                        calcMayorias();
+                        initCharts();
+                        renderTrackingTable();
+                        initLab();
+                    }
+                })
+                .catch(err => {
+                    console.error("Error JSON:", err);
+                    document.getElementById('dashboard').innerHTML = '<div class="alert alert-danger m-4">Error cargando datos_encuestas.json. Arranca el servidor Python.</div>';
+                });
+        };
+
+        function switchView(view) {
+            document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
+            document.getElementById(view).classList.add('active');
+            event.currentTarget.classList.add('active');
+            if(view === 'dashboard') {
+                if(chartHemiInst) chartHemiInst.resize();
+                if(chartTrackInst) chartTrackInst.resize();
+            }
+        }
+
+        // MOTOR D'HONDT PARA DASHBOARD
+        function proyectarCongreso(ultimaEncuesta) {
+            PARTIDOS.forEach(p => CONGRESO_ACTUAL[p.id] = 0);
+            
+            NOMBRES_PROVINCIAS.forEach(prov => {
+                let votosProv = {};
+                PARTIDOS.forEach(p => {
+                    let pct = ultimaEncuesta.d[p.id];
+                    if (regionesMulti[p.id]) {
+                        votosProv[p.id] = regionesMulti[p.id].provs.includes(prov.n) ? pct * regionesMulti[p.id].multi : 0;
+                    } else {
+                        votosProv[p.id] = pct;
+                    }
+                });
+
+                // D'Hondt con barrera 3%
+                let asignados = {}; PARTIDOS.forEach(p => asignados[p.id] = 0);
+                for (let i = 0; i < prov.s; i++) {
+                    let maxCoc = -1; let ganador = null;
+                    PARTIDOS.forEach(p => {
+                        if (votosProv[p.id] >= 3.0) {
+                            let coc = votosProv[p.id] / (asignados[p.id] + 1);
+                            if (coc > maxCoc) { maxCoc = coc; ganador = p.id; }
+                        }
+                    });
+                    if (ganador) { asignados[ganador]++; CONGRESO_ACTUAL[ganador]++; }
+                }
+            });
+        }
+
+        function calcMayorias() {
+            let sumIzq = 0; let sumDer = 0; let nacIzq = 0; let nacDer = 0;
+            PARTIDOS.forEach(p => {
+                const esc = CONGRESO_ACTUAL[p.id];
+                if(p.bloque === 'izq') sumIzq += esc;
+                if(p.bloque === 'der') sumDer += esc;
+                if(p.bloque === 'nac_izq') nacIzq += esc;
+                if(p.bloque === 'nac_der') nacDer += esc;
+            });
+
+            document.getElementById('val-nac-izq').innerText = `${nacIzq} escaños`;
+            document.getElementById('val-nac-der').innerText = `${nacDer} escaños`;
+
+            const selIzq = document.getElementById('sel-nac-izq').value;
+            const selDer = document.getElementById('sel-nac-der').value;
+
+            let totalIzq = sumIzq; let totalDer = sumDer;
+            
+            if(selIzq === 'izq') totalIzq += nacIzq;
+            if(selIzq === 'der') totalDer += nacIzq;
+            if(selDer === 'izq') totalIzq += nacDer;
+            if(selDer === 'der') totalDer += nacDer;
+
+            document.getElementById('dash-escanos-izq').innerText = totalIzq;
+            document.getElementById('dash-escanos-der').innerText = totalDer;
+
+            const bIzq = document.getElementById('badge-izq');
+            if(totalIzq >= 176) { bIzq.className = 'badge bg-success p-2 fs-6'; bIzq.innerText = '✓ Mayoría Absoluta'; }
+            else { bIzq.className = 'badge bg-secondary p-2 fs-6'; bIzq.innerText = '✗ No alcanza'; }
+
+            const bDer = document.getElementById('badge-der');
+            if(totalDer >= 176) { bDer.className = 'badge bg-success p-2 fs-6'; bDer.innerText = '✓ Mayoría Absoluta'; }
+            else { bDer.className = 'badge bg-secondary p-2 fs-6'; bDer.innerText = '✗ No alcanza'; }
+        }
+
+        function initCharts() {
+            // Hemiciclo
+            const ctxH = document.getElementById('chartHemi').getContext('2d');
+            const dataP = PARTIDOS.filter(p => CONGRESO_ACTUAL[p.id] > 0);
+            
+            chartHemiInst = new Chart(ctxH, {
+                type: 'doughnut',
+                data: {
+                    labels: dataP.map(p => p.id),
+                    datasets: [{ data: dataP.map(p => CONGRESO_ACTUAL[p.id]), backgroundColor: dataP.map(p => p.color), borderWidth: 2, borderColor: '#151c2c' }]
+                },
+                options: {
+                    rotation: -90, circumference: 180, cutout: '55%', responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => ` ${c.label}: ${c.raw} escaños` } } }
+                }
+            });
+
+            // Tracking
+            const ctxT = document.getElementById('chartTrackingMain').getContext('2d');
+            const labels = encuestas.map(e => { const d = new Date(e.f); return `${d.getDate()}/${d.getMonth()+1}`; });
+            const datasets = [];
+            const target = ['PP', 'PSOE', 'VOX', 'SUMAR', 'PODEMOS']; 
+            
+            target.forEach(pId => {
+                const color = cMap[pId];
+                const raw = encuestas.map(e => e.d[pId]);
+                let sum=0; const ma = raw.map((v, i) => { sum+=v; return sum/(i+1); });
+                datasets.push({ type: 'line', label: pId + ' Media', data: ma, borderColor: color, borderWidth: 3, tension: 0.4, borderDash: [5,5], pointRadius: 0 });
+                datasets.push({ type: 'line', label: pId, data: raw, backgroundColor: color, borderColor: color, borderWidth: 0, pointRadius: 5, showLine: false });
+            });
+
+            chartTrackInst = new Chart(ctxT, {
+                data: { labels: labels, datasets: datasets },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    scales: { y: { grid: { color: '#2a3449' }, ticks: { color: '#8b9bb4' } }, x: { grid: { display: false }, ticks: { color: '#8b9bb4' } } },
+                    plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } }
+                }
+            });
+        }
+
+        function renderTrackingTable() {
+            const tb = document.getElementById('tbody-tracking');
+            tb.innerHTML = '';
+            [...encuestas].reverse().forEach(e => {
+                let row = `<tr><td class="text-start ps-4 text-muted">${e.f}</td><td class="text-start fw-bold">${e.c}</td>`;
+                const tP = ['PP','PSOE','VOX','SUMAR','PODEMOS','MAS MADRID','ADELANTE','ERC','JUNTS','EH BILDU','PNV'];
+                tP.forEach(p => {
+                    const val = (e.d[p] || 0).toFixed(1);
+                    row += `<td style="background-color: ${cMap[p]}15">${val}%</td>`;
+                });
+                row += '</tr>';
+                tb.innerHTML += row;
+            });
+        }
+
+        // LABORATORIO MANUAL
+        function initLab() {
+            const sel = document.getElementById('sel-lab-provincia');
+            NOMBRES_PROVINCIAS.forEach(p => sel.innerHTML += `<option value="${p.id}">${p.n} (${p.s} Escaños)</option>`);
+            const contInp = document.getElementById('grid-inputs-partidos');
+            PARTIDOS.forEach(p => {
+                contInp.innerHTML += `<div class="col-4 col-md-3 col-lg-2"><label class="form-label small fw-bold mb-1 text-truncate w-100" style="color:${p.color}">${p.id} (%)</label><input type="number" step="0.1" class="form-control form-control-sm in-lab-sim" data-pid="${p.id}" value="0.0"></div>`;
+            });
+            cargarProvLab();
+        }
+
+        function cargarProvLab() {
+            const pid = document.getElementById('sel-lab-provincia').value;
+            const prov = PROVINCIAS_DATA[pid];
+            const tbBase = document.getElementById('tbody-lab-base');
+            tbBase.innerHTML = '';
+            
+            let baseP = Object.keys(prov.base).map(k => ({id: k, v: prov.base[k]})).filter(o => o.v > 0);
+            baseP.sort((a,b) => b.v - a.v);
+            
+            baseP.forEach(bp => {
+                const pct = ((bp.v / prov.validos)*100).toFixed(1);
+                tbBase.innerHTML += `<tr><td class="text-start ps-3 fw-bold" style="color:${cMap[bp.id]}">${bp.id}</td><td class="text-muted">${bp.v.toLocaleString()}</td><td class="text-muted">${pct}%</td><td>-</td></tr>`;
+            });
+
+            document.querySelectorAll('.in-lab-sim').forEach(inp => {
+                const v = prov.base[inp.dataset.pid] || 0;
+                inp.value = ((v / prov.validos)*100).toFixed(1);
+            });
+            document.getElementById('panel-matriz').style.display = 'none';
+        }
+
+        function ejecutarDHondt() {
+            const pid = document.getElementById('sel-lab-provincia').value;
+            const provInfo = NOMBRES_PROVINCIAS.find(p => p.id === pid);
+            const validos = PROVINCIAS_DATA[pid].validos;
+            const escanos = provInfo.s;
+
+            let votos = {};
+            document.querySelectorAll('.in-lab-sim').forEach(inp => {
+                const pct = parseFloat(inp.value) / 100;
+                const vAbs = Math.floor(validos * pct);
+                if(vAbs > 0) votos[inp.dataset.pid] = vAbs;
+            });
+
+            let cocientes = [];
+            let matrizVisual = {};
+            
+            Object.keys(votos).forEach(p => {
+                matrizVisual[p] = [];
+                for(let i=1; i<=escanos; i++) {
+                    const c = votos[p] / i;
+                    matrizVisual[p].push(c);
+                    cocientes.push({p: p, div: i, val: c});
+                }
+            });
+
+            cocientes.sort((a,b) => b.val - a.val);
+            const arrayGanadores = cocientes.slice(0, escanos);
+            const umbral = arrayGanadores.length > 0 ? arrayGanadores[arrayGanadores.length-1].val : 0;
+
+            let reparto = {};
+            Object.keys(votos).forEach(p => reparto[p] = 0);
+            arrayGanadores.forEach(g => reparto[g.p]++);
+
+            const resDiv = document.getElementById('resultado-final-escanos');
+            resDiv.innerHTML = '';
+            Object.keys(reparto).forEach(p => {
+                if(reparto[p]>0) resDiv.innerHTML += `<div style="color:${cMap[p]}">${p}: ${reparto[p]}</div>`;
+            });
+            document.getElementById('badge-reparto-total').innerText = `Total Repartidos: ${escanos}`;
+
+            const table = document.getElementById('tabla-dhondt-matriz');
+            let maxEscanosLogrados = Math.max(...Object.values(reparto));
+            let cols = Math.min(escanos, maxEscanosLogrados + 2); 
+            if(cols < 3) cols = Math.min(escanos, 5);
+
+            let html = `<thead><tr><th class="border-end border-secondary">Partido</th>`;
+            for(let i=1; i<=cols; i++) html += `<th>/${i}</th>`;
+            html += `</tr></thead><tbody>`;
+
+            const pKeys = Object.keys(votos).sort((a,b) => votos[b]-votos[a]);
+            pKeys.forEach(p => {
+                html += `<tr><th class="border-end border-secondary" style="color:${cMap[p]}">${p}</th>`;
+                for(let i=0; i<cols; i++) {
+                    const v = matrizVisual[p][i];
+                    const esGanador = v >= umbral && umbral > 0;
+                    html += `<td class="${esGanador ? 'winner' : 'text-muted'}">${Math.round(v).toLocaleString()}</td>`;
+                }
+                html += `</tr>`;
+            });
+            
+            table.innerHTML = html + `</tbody>`;
+            document.getElementById('panel-matriz').style.display = 'block';
+        }
+    </script>
+</body>
+</html>
