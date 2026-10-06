@@ -437,24 +437,20 @@
             else { bDer.className = 'badge bg-secondary p-2 fs-6'; bDer.innerText = '✗ No alcanza'; }
         }
 
-        function initCharts() {
-            // Hemiciclo
+       function initCharts() {
+            // HEMICICLO (Se queda igual)
             const ctxH = document.getElementById('chartHemi').getContext('2d');
             const dataP = PARTIDOS.filter(p => CONGRESO_ACTUAL[p.id] > 0);
-            
             chartHemiInst = new Chart(ctxH, {
                 type: 'doughnut',
                 data: {
                     labels: dataP.map(p => p.id),
                     datasets: [{ data: dataP.map(p => CONGRESO_ACTUAL[p.id]), backgroundColor: dataP.map(p => p.color), borderWidth: 2, borderColor: '#151c2c' }]
                 },
-                options: {
-                    rotation: -90, circumference: 180, cutout: '55%', responsive: true, maintainAspectRatio: false,
-                    plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => ` ${c.label}: ${c.raw} escaños` } } }
-                }
+                options: { rotation: -90, circumference: 180, cutout: '55%', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => ` ${c.label}: ${c.raw} escaños` } } } }
             });
 
-            // Tracking
+            // REDISEÑO RADICAL DEL TRACKING
             const ctxT = document.getElementById('chartTrackingMain').getContext('2d');
             const labels = encuestas.map(e => { const d = new Date(e.f); return `${d.getDate()}/${d.getMonth()+1}`; });
             const datasets = [];
@@ -463,33 +459,69 @@
             target.forEach(pId => {
                 const color = cMap[pId];
                 const raw = encuestas.map(e => e.d[pId]);
-                let sum=0; const ma = raw.map((v, i) => { sum+=v; return sum/(i+1); });
-                datasets.push({ type: 'line', label: pId + ' Media', data: ma, borderColor: color, borderWidth: 3, tension: 0.4, borderDash: [5,5], pointRadius: 0 });
-                datasets.push({ type: 'line', label: pId, data: raw, backgroundColor: color, borderColor: color, borderWidth: 0, pointRadius: 5, showLine: false });
+                
+                // Media Móvil Matemática (Ventana de 5 periodos para curvas más orgánicas)
+                const window = 5;
+                const ma = raw.map((val, idx, arr) => {
+                    let start = Math.max(0, idx - window + 1);
+                    let subset = arr.slice(start, idx + 1);
+                    return subset.reduce((a, b) => a + b, 0) / subset.length;
+                });
+
+                // 1. La Curva de Tendencia (Línea sólida, curvada y con brillo inferior)
+                datasets.push({ 
+                    type: 'line', 
+                    label: pId + ' (Tendencia)', 
+                    data: ma, 
+                    borderColor: color, 
+                    backgroundColor: color + '15', // Relleno translúcido
+                    borderWidth: 3, 
+                    tension: 0.4, // Curvas de Bezier suaves
+                    pointRadius: 0, // Sin puntos en la línea
+                    pointHitRadius: 10,
+                    fill: true,
+                    order: 1
+                });
+
+                // 2. Nube de Puntos Crudos (Fondo muy sutil)
+                datasets.push({ 
+                    type: 'line', 
+                    label: pId + ' (Sondeos)', 
+                    data: raw, 
+                    backgroundColor: color + '70', 
+                    borderColor: 'transparent', 
+                    borderWidth: 0, 
+                    pointRadius: 2, // Puntos mucho más finos (antes 5)
+                    pointHoverRadius: 5, 
+                    showLine: false,
+                    order: 2
+                });
             });
 
             chartTrackInst = new Chart(ctxT, {
                 data: { labels: labels, datasets: datasets },
                 options: {
                     responsive: true, maintainAspectRatio: false,
-                    scales: { y: { grid: { color: '#2a3449' }, ticks: { color: '#8b9bb4' } }, x: { grid: { display: false }, ticks: { color: '#8b9bb4' } } },
-                    plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } }
+                    interaction: { mode: 'index', intersect: false }, // Tooltip unificado súper limpio
+                    scales: { 
+                        y: { grid: { color: '#2a3449', borderDash: [4,4] }, ticks: { color: '#8b9bb4', callback: v => v+'%' } }, 
+                        x: { grid: { display: false }, ticks: { color: '#8b9bb4', maxTicksLimit: 10 } } // Evita saturación de fechas
+                    },
+                    plugins: { 
+                        legend: { display: false }, 
+                        tooltip: {
+                            backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                            titleColor: '#f8fafc',
+                            bodyColor: '#cbd5e1',
+                            borderColor: '#334155',
+                            borderWidth: 1,
+                            padding: 12,
+                            usePointStyle: true,
+                            // Ocultamos los puntos crudos del tooltip flotante para dejar solo las líneas maestras
+                            filter: function(item) { return item.datasetIndex % 2 === 0; }
+                        } 
+                    }
                 }
-            });
-        }
-
-        function renderTrackingTable() {
-            const tb = document.getElementById('tbody-tracking');
-            tb.innerHTML = '';
-            [...encuestas].reverse().forEach(e => {
-                let row = `<tr><td class="text-start ps-4 text-muted">${e.f}</td><td class="text-start fw-bold">${e.c}</td>`;
-                const tP = ['PP','PSOE','VOX','SUMAR','PODEMOS','MAS MADRID','ADELANTE','ERC','JUNTS','EH BILDU','PNV'];
-                tP.forEach(p => {
-                    const val = (e.d[p] || 0).toFixed(1);
-                    row += `<td style="background-color: ${cMap[p]}15">${val}%</td>`;
-                });
-                row += '</tr>';
-                tb.innerHTML += row;
             });
         }
 
