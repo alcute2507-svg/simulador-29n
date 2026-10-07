@@ -13,10 +13,8 @@ base = {
 }
 
 encuestas = []
-# ¡TRUCO! Fijamos la última encuesta en el día de HOY
+# Fijamos la fecha a hoy (7 de octubre de 2026)
 fecha_actual = datetime.now()
-
-print("📊 Generando histórico hacia atrás...")
 
 for i in range(40):
     encuesta = {
@@ -26,10 +24,9 @@ for i in range(40):
     }
     encuestas.append(encuesta)
 
-    # Restamos días para viajar al pasado en la siguiente iteración
+    # Vamos restando días para generar el pasado
     fecha_actual -= timedelta(days=random.randint(2, 6))
 
-    # Fluctuación inversa
     base["PP"] += random.uniform(-0.5, 0.4)
     base["PSOE"] += random.uniform(-0.4, 0.5)
     base["VOX"] += random.uniform(-0.25, 0.2)
@@ -40,10 +37,9 @@ for i in range(40):
             base[p] += random.uniform(-0.05, 0.05)
         base[p] = max(0.1, round(base[p], 1))
 
-# Le damos la vuelta a la lista para que el JSON quede ordenado cronológicamente
 encuestas.reverse()
 
 with open('datos_encuestas.json', 'w', encoding='utf-8') as f:
     json.dump(encuestas, f, ensure_ascii=False, indent=4)
     
-print(f"✅ ¡Éxito! Base de datos inicializada hasta el {datetime.now().strftime('%d/%m/%Y')}.")
+print(f"✅ ¡Éxito! Base de datos inicializada.")
